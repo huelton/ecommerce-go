@@ -3,7 +3,7 @@ package config
 import (
 	"database/sql"
 	"fmt"
-	"github.com/lib/pq"
+	_ "github.com/lib/pq"
 	"log"
 )
 
@@ -23,5 +23,5 @@ func ConectDataBase() {
 		log.Fatalf("Erro no ping do banco: %v", err)
 	}
 
-	log.Println("Banco de dados conectado com sucesso")
+	fmt.Println("Banco de dados conectado com sucesso")
 }

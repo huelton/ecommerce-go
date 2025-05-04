@@ -1,9 +1,9 @@
 package main
 
 import (
+	"ecommerce-go/config"
+	"ecommerce-go/routes"
 	"github.com/gin-gonic/gin"
-	"github.com/huelton/ecommerce-go/config"
-	"github.com/huelton/ecommerce-go/routes"
 )
 
 func main() {
