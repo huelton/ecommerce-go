@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"ecommerce/config"
 	"ecommerce/models"
 	"github.com/gin-gonic/gin"
@@ -31,10 +32,27 @@ func CreateOrder(c *gin.Context) {
 
 	for _, item := range order.Items {
 		var price float64
-		err := tx.QueryRow("SELECT price FROM produtos WHERE id = $1", item.ProductID).Scan(&price)
+		var stock int
+		err := tx.QueryRow("SELECT price, quantity FROM produtos WHERE id = $1", item.ProductID).Scan(&price, &stock)
 		if err != nil {
 			tx.Rollback()
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid Product"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid Product or not Founded"})
+			return
+		}
+
+		if item.Quantity > stock {
+			tx.Rollback()
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Stock Enough to the product"})
+			return
+		}
+
+		//Discount Stock
+		_, err = tx.Exec("UPDATE produtos SET quantity = quantity - $1 WHERE id = $2",
+			item.Quantity, item.ProductID,
+		)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro to Update stock"})
 			return
 		}
 
@@ -59,7 +77,7 @@ func CreateOrder(c *gin.Context) {
 
 func ListOrdersUser(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	rows, err := config.DB.Query("SELECT id FROM pedidos WHERE user_id = $1", userID)
+	rows, err := config.DB.Query("SELECT id, status FROM pedidos WHERE user_id = $1", userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to find orders"})
 		return
@@ -70,7 +88,7 @@ func ListOrdersUser(c *gin.Context) {
 	for rows.Next() {
 		var o models.Order
 		o.UserID = userID
-		rows.Scan(&o.ID)
+		rows.Scan(&o.ID, &o.Status)
 		items, _ := config.DB.Query("SELECT id, order_id, product_id, quantity, unit_price FROM itens_pedido WHERE order_id = $1", o.ID)
 		for items.Next() {
 			var item models.OrderItems
@@ -81,4 +99,32 @@ func ListOrdersUser(c *gin.Context) {
 		orders = append(orders, o)
 	}
 	c.JSON(http.StatusOK, orders)
+}
+
+func OrderPayment(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	orderID := c.Param("id")
+
+	var status string
+	err := config.DB.QueryRow("SELECT status FROM pedidos WHERE id = $1 AND user_id = $2", orderID, userID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to find order"})
+		}
+		return
+	}
+
+	if status == "pago" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Order already paid"})
+		return
+	}
+
+	_, err = config.DB.Exec("UPDATE pedidos SET status = 'pago' WHERE id = $1", orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro to Update status"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"mensagem": "Simulated payment with successfully"})
 }
