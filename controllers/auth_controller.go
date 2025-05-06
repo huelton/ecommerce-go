@@ -2,9 +2,9 @@ package controllers
 
 import (
 	"database/sql"
-	"ecommerce-go/config"
-	"ecommerce-go/models"
-	"ecommerce-go/utils"
+	"ecommerce/config"
+	"ecommerce/models"
+	"ecommerce/utils"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"

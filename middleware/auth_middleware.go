@@ -9,7 +9,7 @@ import (
 
 var jwtkey = []byte("minha_chave_secreta")
 
-func Autenticado() gin.HandlerFunc {
+func Autenticated() gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 		auth := c.GetHeader("Authorization")

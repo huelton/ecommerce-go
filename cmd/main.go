@@ -1,8 +1,8 @@
 package main
 
 import (
-	"ecommerce-go/config"
-	"ecommerce-go/routes"
+	"ecommerce/config"
+	"ecommerce/routes"
 	"github.com/gin-gonic/gin"
 )
 
