@@ -18,7 +18,11 @@ func RegisterRoutes(r *gin.Engine) {
 	})
 
 	//Products
-	api.GET("/products", controllers.ListProducts)
 	api.POST("/products", middleware.Autenticated(), controllers.CreateProduct)
+	api.GET("/products", controllers.ListProducts)
+
+	//Orders
+	api.POST("/orders", middleware.Autenticated(), controllers.CreateOrder)
+	api.GET("/orders", middleware.Autenticated(), controllers.ListOrdersUser)
 
 }
