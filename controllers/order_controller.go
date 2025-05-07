@@ -72,7 +72,7 @@ func CreateOrder(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"mensagem": "Order created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"message": "Order created successfully"})
 }
 
 func ListOrdersUser(c *gin.Context) {
@@ -126,5 +126,37 @@ func OrderPayment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro to Update status"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"mensagem": "Simulated payment with successfully"})
+	c.JSON(http.StatusOK, gin.H{"message": "Simulated payment with successfully"})
+}
+
+func ListAllOrdersAdmin(c *gin.Context) {
+	isAdmin := c.GetBool("is_admin")
+	if !isAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Just Admins should access this route"})
+		return
+	}
+	rows, err := config.DB.Query("SELECT id, user_id, status FROM pedidos ORDER BY created_at DESC")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to find orders"})
+		return
+	}
+	defer rows.Close()
+
+	var orders []models.Order
+	for rows.Next() {
+		var o models.Order
+		if err := rows.Scan(&o.ID, &o.UserID, &o.Status); err != nil {
+			continue
+		}
+
+		items, _ := config.DB.Query("SELECT product_id, quantity, unit_price FROM itens_pedido WHERE order_id = $1", o.ID)
+		for items.Next() {
+			var item models.OrderItems
+			items.Scan(&item.ProductID, &item.Quantity, &item.UnitPrice)
+			o.Items = append(o.Items, item)
+		}
+
+		orders = append(orders, o)
+	}
+	c.JSON(http.StatusOK, orders)
 }

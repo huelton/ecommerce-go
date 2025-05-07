@@ -28,4 +28,7 @@ func RegisterRoutes(r *gin.Engine) {
 	//Payment
 	api.PUT("/orders/:id/payment", middleware.Autenticated(), controllers.OrderPayment)
 
+	//Admin routes
+	api.GET("/admin/orders", middleware.Autenticated(), controllers.ListAllOrdersAdmin)
+
 }
