@@ -33,5 +33,6 @@ func RegisterRoutes(r *gin.Engine) {
 
 	//Admin routes
 	api.GET("/admin/orders", middleware.Autenticated(), controllers.ListAllOrdersAdmin)
+	api.GET("/admin/dashboard/orders", middleware.Autenticated(), controllers.CountAllOrdersAdmin)
 
 }

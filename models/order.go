@@ -14,3 +14,10 @@ type OrderItems struct {
 	UnitPrice float64 `json:"unit_price"`
 	Quantity  int     `json:"quantity"`
 }
+
+type CountOrders struct {
+	Pending   int     `json:"pendentes"`
+	Paid      int     `json:"pagos"`
+	Canceled  int     `json:"cancelados"`
+	TotalPaid float64 `json:"total_valor_pago"`
+}
