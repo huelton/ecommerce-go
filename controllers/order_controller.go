@@ -66,7 +66,7 @@ func CreateOrder(c *gin.Context) {
 		}
 	}
 
-	// Commit da transação para salvar os dados
+	// Commit transaction to persiste
 	if err = tx.Commit(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
 		return
@@ -159,4 +159,74 @@ func ListAllOrdersAdmin(c *gin.Context) {
 		orders = append(orders, o)
 	}
 	c.JSON(http.StatusOK, orders)
+}
+
+func CancelOrder(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	orderID := c.Param("id")
+
+	var status string
+	err := config.DB.QueryRow("SELECT status FROM pedidos WHERE id = $1 AND user_id = $2", orderID, userID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to find order"})
+		}
+		return
+	}
+
+	if status != "pendente" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Order already paid or canceled"})
+		return
+	}
+
+	rows, err := config.DB.Query("SELECT product_id, quantity FROM itens_pedido WHERE order_id = $1", orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to find items into orders"})
+		return
+	}
+	defer rows.Close()
+
+	type item struct {
+		ProductID int
+		Quantity  int
+	}
+	var items []item
+	for rows.Next() {
+		var i item
+		rows.Scan(&i.ProductID, &i.Quantity)
+		items = append(items, i)
+	}
+
+	tx, err := config.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to inicialize Transaction"})
+		return
+	}
+
+	for _, i := range items {
+		_, err := tx.Exec("UPDATE produtos SET quantity = quantity + $1 WHERE id = $2", i.Quantity, i.ProductID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to restore products in Stock"})
+			return
+		}
+	}
+
+	_, err = tx.Exec("UPDATE pedidos SET status = 'cancelado' WHERE id = $1", orderID)
+	if err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error to cancel Order"})
+		return
+	}
+
+	// Commit transaction to persiste
+	if err = tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error committing transaction"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Order canceled with successfully"})
+
 }
