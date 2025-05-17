@@ -4,11 +4,14 @@ import (
 	"database/sql"
 	"ecommerce/config"
 	"ecommerce/models"
+	"ecommerce/repositories"
 	"ecommerce/utils"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 )
+
+var userRepo = repositories.NewUserRepository(config.DB)
 
 func Register(c *gin.Context) {
 	var user models.User
@@ -17,26 +20,19 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 14)
-
-	err := config.DB.QueryRow(
-		"INSERT INTO usuarios(name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id",
-		user.Name, user.Email, string(hashedPassword), user.IsAdmin,
-	).Scan(&user.ID)
-
+	err := userRepo.CreateUser(&user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error in insert User"})
 		return
 	}
 	token, _ := utils.GenerateToken(user.ID, user.IsAdmin)
 	c.JSON(http.StatusCreated, gin.H{"token": token})
-
 }
 
 func Login(c *gin.Context) {
 	var login struct {
-		Email    string `json: "email`
-		Password string `json: "password`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	if err := c.ShouldBindJSON(&login); err != nil {
@@ -44,12 +40,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	var user models.User
-	err := config.DB.QueryRow(
-		"SELECT id, name, email, password, is_admin FROM usuarios WHERE email = $1",
-		login.Email,
-	).Scan(&user.ID, &user.Name, &user.Email, &user.Password, &user.IsAdmin)
-
+	user, err := userRepo.GetUserByEmail(login.Email)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "User not Found"})
@@ -66,5 +57,4 @@ func Login(c *gin.Context) {
 
 	token, _ := utils.GenerateToken(user.ID, user.IsAdmin)
 	c.JSON(http.StatusOK, gin.H{"token": token})
-
 }

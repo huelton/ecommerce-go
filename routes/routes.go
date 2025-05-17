@@ -19,6 +19,7 @@ func RegisterRoutes(r *gin.Engine) {
 
 	//Products
 	api.POST("/products", middleware.Autenticated(), controllers.CreateProduct)
+	api.PUT("/products/:id", middleware.Autenticated(), controllers.UpdateProduct)
 	api.GET("/products", controllers.ListProducts)
 
 	//Orders
@@ -33,6 +34,6 @@ func RegisterRoutes(r *gin.Engine) {
 
 	//Admin routes
 	api.GET("/admin/orders", middleware.Autenticated(), controllers.ListAllOrdersAdmin)
-	api.GET("/admin/dashboard/orders", middleware.Autenticated(), controllers.CountAllOrdersAdmin)
+	api.GET("/admin/dashboard/orders", controllers.CountAllOrdersAdmin)
 
 }
