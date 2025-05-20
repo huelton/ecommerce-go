@@ -11,6 +11,13 @@ import (
 
 var productRepo = repositories.NewProductRepository(config.DB)
 
+// @Summary Crate a product
+// @Description Create a product
+// @Tags orders
+// @Accept json
+// @Produce json
+// @Success 200 {object} models.Product
+// @Router /products [post]
 func CreateProduct(c *gin.Context) {
 	isAdmin := c.GetBool("is_admin")
 	if !isAdmin {
