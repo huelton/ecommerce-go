@@ -10,6 +10,29 @@ import (
 	"net/http"
 )
 
+type LoginResponse struct {
+	Token string `json:"token"`
+}
+
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// @Summary Registro de usuário
+// @Description Cria um novo usuário no sistema
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param user body models.User true "Dados do usuário"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse "Invalid JSON"
+// @Failure 500 {object} ErrorResponse ""Error in insert User"
+// @Router /register [post]
 func Register(c *gin.Context) {
 	var user models.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -33,6 +56,17 @@ func Register(c *gin.Context) {
 
 }
 
+// @Summary Login de usuário
+// @Description Autentica um usuário e retorna um token
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param credentials body LoginRequest true "Credenciais do usuário"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} ErrorResponse "Invalid JSON"
+// @Failure 401 {object} ErrorResponse "User not Found or Invalid Password"
+// @Failure 500 {object} ErrorResponse "Error in find User"
+// @Router /login [post]
 func Login(c *gin.Context) {
 	var login struct {
 		Email    string `json: "email`

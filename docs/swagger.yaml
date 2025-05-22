@@ -1,0 +1,142 @@
+definitions:
+  controllers.ErrorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  controllers.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  controllers.LoginResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  models.Product:
+    properties:
+      description:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+      quantity:
+        type: integer
+    type: object
+  models.User:
+    properties:
+      email:
+        type: string
+      id:
+        type: integer
+      isAdmin:
+        type: boolean
+      name:
+        type: string
+      password:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /login:
+    post:
+      consumes:
+      - application/json
+      description: Autentica um usuário e retorna um token
+      parameters:
+      - description: Credenciais do usuário
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/controllers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.LoginResponse'
+        "400":
+          description: Invalid JSON
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "401":
+          description: User not Found or Invalid Password
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Error in find User
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Login de usuário
+      tags:
+      - Auth
+  /products:
+    post:
+      consumes:
+      - application/json
+      description: Return a product created
+      parameters:
+      - description: Dados do produto
+        in: body
+        name: product
+        required: true
+        schema:
+          $ref: '#/definitions/models.Product'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Product'
+      security:
+      - BearerAuth: []
+      summary: Create a product
+      tags:
+      - products
+  /register:
+    post:
+      consumes:
+      - application/json
+      description: Cria um novo usuário no sistema
+      parameters:
+      - description: Dados do usuário
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/controllers.LoginResponse'
+        "400":
+          description: Invalid JSON
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Error in insert User
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Registro de usuário
+      tags:
+      - Auth
+securityDefinitions:
+  BearerAuth:
+    description: 'Informe o token JWT no formato: Bearer {seu_token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
