@@ -15,6 +15,40 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/admin/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retorna todos os pedidos dos usuarios autenticado como admin",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Dashboard Admin"
+                ],
+                "summary": "Lista os pedidos de todos os usuarios Admin",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Order"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Error to find Order",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/login": {
             "post": {
                 "description": "Autentica um usuário e retorna um token",
@@ -150,6 +184,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/orders/{id}/payment": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Atualiza o status de um pedido para \"pago\", se ele ainda não estiver pago",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Pedidos"
+                ],
+                "summary": "Realiza o pagamento de um pedido",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do Pedido",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Pagamento realizado com sucesso",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Pedido já está pago",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Pedido não encontrado",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Erro interno ao processar o pedido",
+                        "schema": {
+                            "$ref": "#/definitions/controllers.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/products": {
             "get": {
                 "description": "Retorna uma lista com todos os produtos disponíveis no banco de dados",
@@ -184,7 +273,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Return a product created",
+                "description": "Retorna um produto criado",
                 "consumes": [
                     "application/json"
                 ],
@@ -192,9 +281,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "products"
+                    "Produtos"
                 ],
-                "summary": "Create a product",
+                "summary": "Cria um Produto",
                 "parameters": [
                     {
                         "description": "Dados do produto",

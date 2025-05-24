@@ -7,9 +7,9 @@ import (
 	"net/http"
 )
 
-// @Summary Create a product
-// @Description Return a product created
-// @Tags products
+// @Summary Cria um Produto
+// @Description Retorna um produto criado
+// @Tags Produtos
 // @Accept json
 // @Produce json
 // @Param product body models.Product true "Dados do produto"

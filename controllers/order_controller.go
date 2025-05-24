@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"ecommerce/config"
 	"ecommerce/models"
 	"github.com/gin-gonic/gin"
@@ -94,7 +95,7 @@ func CreateOrder(c *gin.Context) {
 // @Security BearerAuth
 func ListOrdersUser(c *gin.Context) {
 	userID := c.GetInt("user_id")
-	rows, err := config.DB.Query("SELECT id FROM pedidos WHERE user_id = $1", userID)
+	rows, err := config.DB.Query("SELECT id, status FROM pedidos WHERE user_id = $1", userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to find Order"})
 		return
@@ -105,14 +106,55 @@ func ListOrdersUser(c *gin.Context) {
 	for rows.Next() {
 		var o models.Order
 		o.UserID = userID
-		rows.Scan(&o.ID)
-		items, _ := config.DB.Query("SELECT product_id, quantity, unit_price FROM itens_pedido WHERE order_id = $1", o.ID)
+		rows.Scan(&o.ID, &o.Status)
+		items, _ := config.DB.Query("SELECT id, order_id, product_id, quantity, unit_price FROM itens_pedido WHERE order_id = $1", o.ID)
 		for items.Next() {
 			var item models.OrderItems
-			items.Scan(&item.ProductID, &item.Quantity, &item.UnitPrice)
+			items.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.Quantity, &item.UnitPrice)
 			o.Items = append(o.Items, item)
 		}
 		orders = append(orders, o)
 	}
 	c.JSON(http.StatusOK, orders)
+}
+
+// OrderPayment realiza o pagamento de um pedido
+// @Summary Realiza o pagamento de um pedido
+// @Description Atualiza o status de um pedido para "pago", se ele ainda não estiver pago
+// @Tags Pedidos
+// @Accept json
+// @Produce json
+// @Param id path string true "ID do Pedido"
+// @Success 200 {object} SuccessResponse "Pagamento realizado com sucesso"
+// @Failure 400 {object} ErrorResponse "Pedido já está pago"
+// @Failure 404 {object} ErrorResponse "Pedido não encontrado"
+// @Failure 500 {object} ErrorResponse "Erro interno ao processar o pedido"
+// @Router /orders/{id}/payment [post]
+// @Security BearerAuth
+func OrderPayment(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	orderID := c.Param("id")
+
+	var status string
+	err := config.DB.QueryRow("SELECT status FROM pedidos WHERE id = $1 and user_id = $2", orderID, userID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Order not found"})
+		}
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to find Order"})
+		return
+	}
+
+	if status == "pago" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Order Already paid"})
+		return
+	}
+
+	_, err = config.DB.Exec("UPDATE pedidos SET status 'pago' WHERE id = $1", orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to update Status order"})
+		return
+	}
+
+	c.JSON(http.StatusOK, SuccessResponse{Success: "Payment Order created successfully"})
 }
