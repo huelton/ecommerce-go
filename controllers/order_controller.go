@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"ecommerce/config"
 	"ecommerce/models"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -52,7 +53,7 @@ func CreateOrder(c *gin.Context) {
 
 		var price float64
 		var stockQuantity int
-		err := tx.QueryRow("SELECT price FROM produtos WHERE id = $1", item.ProductID).Scan(&price)
+		err := tx.QueryRow("SELECT price, quantity FROM produtos WHERE id = $1", item.ProductID).Scan(&price, &stockQuantity)
 		if err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid Product"})
@@ -61,7 +62,8 @@ func CreateOrder(c *gin.Context) {
 
 		if item.Quantity > stockQuantity {
 			tx.Rollback()
-			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Stock is enough to the product"})
+			message := fmt.Sprintf("Stock is not enough for this product: %d", item.ProductID)
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: message})
 			return
 		}
 
@@ -72,7 +74,7 @@ func CreateOrder(c *gin.Context) {
 			return
 		}
 
-		_, err = tx.Exec("INSERT INTO items_pedido (order_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4)", order.ID, item.ProductID, item.Quantity, item.UnitPrice)
+		_, err = tx.Exec("INSERT INTO itens_pedido (order_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4)", order.ID, item.ProductID, item.Quantity, price)
 		if err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to insert Item Order"})
@@ -129,7 +131,7 @@ func ListOrdersUser(c *gin.Context) {
 // @Failure 400 {object} ErrorResponse "Pedido já está pago"
 // @Failure 404 {object} ErrorResponse "Pedido não encontrado"
 // @Failure 500 {object} ErrorResponse "Erro interno ao processar o pedido"
-// @Router /orders/{id}/payment [post]
+// @Router /orders/{id}/payment [put]
 // @Security BearerAuth
 func OrderPayment(c *gin.Context) {
 	userID := c.GetInt("user_id")
@@ -157,4 +159,82 @@ func OrderPayment(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, SuccessResponse{Success: "Payment Order created successfully"})
+}
+
+// CancelOrder realiza o cancelamento de um pedido
+// @Summary Realiza o cancelamento de um pedido
+// @Description Atualiza o status de um pedido para "cancelado", se ele ainda não estiver cancelado
+// @Tags Pedidos
+// @Accept json
+// @Produce json
+// @Param id path string true "ID do Pedido"
+// @Success 200 {object} SuccessResponse "Cancelamento realizado com sucesso"
+// @Failure 400 {object} ErrorResponse "Pedido já está pago ou cancelado"
+// @Failure 404 {object} ErrorResponse "Pedido não encontrado"
+// @Failure 500 {object} ErrorResponse "Erro interno ao cancelar o pedido"
+// @Router /orders/{id}/cancel [put]
+// @Security BearerAuth
+func CancelOrder(c *gin.Context) {
+	userID := c.GetInt("user_id")
+	orderID := c.Param("id")
+
+	var status string
+	err := config.DB.QueryRow("SELECT status FROM pedidos WHERE id = $1 and user_id = $2", orderID, userID).Scan(&status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, ErrorResponse{Error: "Order not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to find Order"})
+		}
+		return
+	}
+
+	if status != "pendente" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Order Already paid or cancel"})
+		return
+	}
+
+	//get items to restore stock
+	rows, err := config.DB.Query("SELECT product_id, quantity FROM itens_pedido WHERE order_id = $1", orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to find Order Itens"})
+		return
+	}
+	defer rows.Close()
+
+	type item struct {
+		ProductID int
+		Quantity  int
+	}
+
+	var itens []item
+	for rows.Next() {
+		var i item
+		rows.Scan(&i.ProductID, &i.Quantity)
+		itens = append(itens, i)
+	}
+
+	tx, err := config.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to begin the Transaction"})
+		return
+	}
+
+	for _, i := range itens {
+		_, err = tx.Exec("UPDATE produtos SET quantity = quantity + $1 WHERE id = $2", i.Quantity, i.ProductID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to restore Stock"})
+			return
+		}
+	}
+
+	_, err = tx.Exec("UPDATE pedidos SET status 'cancelado' WHERE id = $1", orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to cancel order"})
+		return
+	}
+
+	tx.Commit()
+	c.JSON(http.StatusOK, SuccessResponse{Success: "Order cancel with successfully"})
 }

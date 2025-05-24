@@ -30,7 +30,7 @@ func RegisterRoutes(r *gin.Engine) {
 	api.PUT("/orders/:id/payment", middleware.Autenticated(), controllers.OrderPayment)
 
 	//Cancel Order
-	//api.PUT("/orders/:id/cancel", middleware.Autenticated(), controllers.CancelOrder)
+	api.PUT("/orders/:id/cancel", middleware.Autenticated(), controllers.CancelOrder)
 
 	//Admin routes
 	api.GET("/admin/orders", middleware.Autenticated(), controllers.ListAllOrdersAdmin)

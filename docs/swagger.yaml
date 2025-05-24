@@ -183,8 +183,44 @@ paths:
       summary: Cria um novo pedido
       tags:
       - Pedidos
+  /orders/{id}/cancel:
+    put:
+      consumes:
+      - application/json
+      description: Atualiza o status de um pedido para "cancelado", se ele ainda não
+        estiver cancelado
+      parameters:
+      - description: ID do Pedido
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Cancelamento realizado com sucesso
+          schema:
+            $ref: '#/definitions/controllers.SuccessResponse'
+        "400":
+          description: Pedido já está pago ou cancelado
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "404":
+          description: Pedido não encontrado
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Erro interno ao cancelar o pedido
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Realiza o cancelamento de um pedido
+      tags:
+      - Pedidos
   /orders/{id}/payment:
-    post:
+    put:
       consumes:
       - application/json
       description: Atualiza o status de um pedido para "pago", se ele ainda não estiver
