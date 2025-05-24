@@ -16,6 +16,37 @@ definitions:
       token:
         type: string
     type: object
+  controllers.SuccessResponse:
+    properties:
+      success:
+        type: string
+    type: object
+  models.Order:
+    properties:
+      id:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/models.OrderItems'
+        type: array
+      status:
+        type: string
+      user_id:
+        type: integer
+    type: object
+  models.OrderItems:
+    properties:
+      id:
+        type: integer
+      order_id:
+        type: integer
+      product_id:
+        type: integer
+      quantity:
+        type: integer
+      unit_price:
+        type: number
+    type: object
   models.Product:
     properties:
       description:
@@ -79,7 +110,78 @@ paths:
       summary: Login de usuário
       tags:
       - Auth
+  /orders:
+    get:
+      description: Retorna todos os pedidos associados ao usuário autenticado
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Order'
+            type: array
+        "500":
+          description: Error to find Order
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Lista os pedidos de um usuário
+      tags:
+      - Pedidos
+    post:
+      consumes:
+      - application/json
+      description: Cria um pedido para o usuário autenticado com os itens fornecidos
+      parameters:
+      - description: Dados do pedido
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/models.Order'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Order created successfully
+          schema:
+            $ref: '#/definitions/controllers.SuccessResponse'
+        "400":
+          description: Invalid Product
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+        "500":
+          description: Error to insert Item Order
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Cria um novo pedido
+      tags:
+      - Pedidos
   /products:
+    get:
+      description: Retorna uma lista com todos os produtos disponíveis no banco de
+        dados
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Product'
+            type: array
+        "500":
+          description: Error to find products
+          schema:
+            $ref: '#/definitions/controllers.ErrorResponse'
+      summary: Lista todos os produtos
+      tags:
+      - Produtos
     post:
       consumes:
       - application/json

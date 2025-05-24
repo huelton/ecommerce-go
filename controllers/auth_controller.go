@@ -35,15 +35,16 @@ type LoginRequest struct {
 // @Router /register [post]
 func Register(c *gin.Context) {
 	var user models.User
+
 	if err := c.ShouldBindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON"})
 		return
 	}
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(user.Password), 14)
 
 	err := config.DB.QueryRow(
-		"INSERT INTO usuarios(name, email, password, is_admin) VALUES ($1, $2, $3, $4) RETURNING id",
+		"INSERT INTO usuarios(nome, email, senha, is_admin) VALUES ($1, $2, $3, $4) RETURNIN id",
 		user.Name, user.Email, string(hashedPassword), user.IsAdmin,
 	).Scan(&user.ID)
 
@@ -51,9 +52,9 @@ func Register(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error in insert User"})
 		return
 	}
-	token, _ := utils.GenerateToken(user.ID, user.IsAdmin)
-	c.JSON(http.StatusCreated, gin.H{"token": token})
 
+	token, _ := utils.GenerateToken(user.ID, user.IsAdmin)
+	c.JSON(http.StatusCreated, LoginResponse{Token: token})
 }
 
 // @Summary Login de usuário
@@ -68,13 +69,9 @@ func Register(c *gin.Context) {
 // @Failure 500 {object} ErrorResponse "Error in find User"
 // @Router /login [post]
 func Login(c *gin.Context) {
-	var login struct {
-		Email    string `json: "email`
-		Password string `json: "password`
-	}
-
+	var login LoginRequest
 	if err := c.ShouldBindJSON(&login); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid JSON"})
 		return
 	}
 
@@ -94,11 +91,10 @@ func Login(c *gin.Context) {
 	}
 
 	if bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(login.Password)) != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Password"})
+		c.JSON(http.StatusUnauthorized, ErrorResponse{Error: "Invalid Password"})
 		return
 	}
 
 	token, _ := utils.GenerateToken(user.ID, user.IsAdmin)
-	c.JSON(http.StatusOK, gin.H{"token": token})
-
+	c.JSON(http.StatusOK, LoginResponse{Token: token})
 }
