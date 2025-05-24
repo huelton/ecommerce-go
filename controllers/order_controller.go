@@ -50,12 +50,27 @@ func CreateOrder(c *gin.Context) {
 	for _, item := range order.Items {
 
 		var price float64
+		var stockQuantity int
 		err := tx.QueryRow("SELECT price FROM produtos WHERE id = $1", item.ProductID).Scan(&price)
 		if err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Invalid Product"})
 			return
 		}
+
+		if item.Quantity > stockQuantity {
+			tx.Rollback()
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "Stock is enough to the product"})
+			return
+		}
+
+		_, err = tx.Exec("UPDATE produtos SET quantity = quantity - $1 WHERE id = $2", item.Quantity, item.ProductID)
+		if err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to update Stock"})
+			return
+		}
+
 		_, err = tx.Exec("INSERT INTO items_pedido (order_id, product_id, quantity, unit_price) VALUES ($1,$2,$3,$4)", order.ID, item.ProductID, item.Quantity, item.UnitPrice)
 		if err != nil {
 			tx.Rollback()
