@@ -222,6 +222,7 @@ func CancelOrder(c *gin.Context) {
 
 	for _, i := range itens {
 		_, err = tx.Exec("UPDATE produtos SET quantity = quantity + $1 WHERE id = $2", i.Quantity, i.ProductID)
+		_, err = tx.Exec("UPDATE itens_pedido SET quantity = 0, unit_price = 0 WHERE product_id = $1 AND order_id = $2", i.ProductID, orderID)
 		if err != nil {
 			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to restore Stock"})
@@ -229,7 +230,7 @@ func CancelOrder(c *gin.Context) {
 		}
 	}
 
-	_, err = tx.Exec("UPDATE pedidos SET status 'cancelado' WHERE id = $1", orderID)
+	_, err = tx.Exec("UPDATE pedidos SET status ='cancelado' WHERE id = $1", orderID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "Error to cancel order"})
 		return
