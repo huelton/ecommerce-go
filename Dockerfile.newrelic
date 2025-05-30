@@ -1,0 +1,13 @@
+# Dockerfile
+FROM newrelic/infrastructure:latest
+
+# Atualizar e instalar pacotes necessários
+RUN apk update && apk add --no-cache ca-certificates openssl curl
+
+# Baixar e instalar certificado atualizado
+RUN curl -O https://curl.se/ca/cacert.pem && \
+    mv cacert.pem /etc/ssl/certs/ && \
+    update-ca-certificates
+# Definir variável de ambiente diretamente na imagem
+ENV NRIA_IGNORE_SSL_ERRORS=true
+

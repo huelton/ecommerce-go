@@ -1,0 +1,3 @@
+#Docker new Relic start
+docker build -f Dockerfile.newrelic -t newrelic-agent .
+docker run -e NRIA_LICENSE_KEY=your_key_here newrelic/infrastructure:latest
